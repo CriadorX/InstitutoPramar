@@ -63,6 +63,10 @@ import {
   Star,
 } from 'lucide-react';
 
+// --- UTILITY IMPORTS ---
+import { ErrorBoundary, ToastContainer, toast, safeLocalStorage, handleAsync } from './errorHandling';
+import { validateEmail, validatePhone, validateBirthDate, validateAppointmentDate, sanitizeText, validateName, validatePassword, isAdminEmail } from './validation';
+
 // --- TYPES ---
 
 type Professional = {
@@ -153,10 +157,26 @@ interface MedicalRecord {
 type ViewState = 'dashboard' | 'patients' | 'professionals' | 'settings' | 'schedule' | 'telemedicine' | 'messages' | 'records' | 'finance' | 'users_management';
 
 const SpecialtiesList = [
+  // Psicologia - Todas as Áreas
+  "Psicologia Clínica",
+  "Psicologia Hospitalar",
+  "Psicologia da Saúde",
+  "Psicologia Escolar/Educacional",
+  "Psicologia Jurídica",
+  "Psicologia Social",
+  "Psicologia Organizacional e do Trabalho",
+  "Psicologia do Esporte",
+  "Psicologia do Trânsito",
+  "Psicopedagogia",
+  "Neuropsicologia",
+  "Psicomotricidade",
+  "Avaliação Psicológica",
+
+  // Outras Especialidades Multidisciplinares
   "Nutrição",
   "Terapia Ocupacional",
-  "Psicopedagogia",
-  "Fonoaudiologia"
+  "Fonoaudiologia",
+  "Fisioterapia"
 ];
 
 
@@ -477,20 +497,16 @@ const AppContext = createContext<{
 const AppProvider = ({ children, session }: { children?: React.ReactNode, session?: any }) => {
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [patients, setPatients] = useState<Patient[]>(() => {
-    const saved = localStorage.getItem('pramar_patients');
-    return saved ? JSON.parse(saved) : [];
+    return safeLocalStorage.getItem<Patient[]>('pramar_patients', []);
   });
   const [appointments, setAppointments] = useState<Appointment[]>(() => {
-    const saved = localStorage.getItem('pramar_appointments');
-    return saved ? JSON.parse(saved) : [];
+    return safeLocalStorage.getItem<Appointment[]>('pramar_appointments', []);
   });
   const [records, setRecords] = useState<MedicalRecord[]>(() => {
-    const saved = localStorage.getItem('pramar_records');
-    return saved ? JSON.parse(saved) : [];
+    return safeLocalStorage.getItem<MedicalRecord[]>('pramar_records', []);
   });
   const [consultations, setConsultations] = useState<Consultation[]>(() => {
-    const saved = localStorage.getItem('pramar_consultations');
-    return saved ? JSON.parse(saved) : [];
+    return safeLocalStorage.getItem<Consultation[]>('pramar_consultations', []);
   });
 
   const [currentView, setCurrentView] = useState<ViewState>('dashboard');
@@ -501,7 +517,7 @@ const AppProvider = ({ children, session }: { children?: React.ReactNode, sessio
 
   const logout = async () => {
     if (supabase) await supabase.auth.signOut();
-    localStorage.removeItem('pramar_session');
+    safeLocalStorage.removeItem('pramar_session');
     window.location.reload();
   };
 
@@ -513,7 +529,8 @@ const AppProvider = ({ children, session }: { children?: React.ReactNode, sessio
     if (!session?.user) return;
 
     const email = session.user.email;
-    if (email === 'licitadigitaltech@gmail.com' || email.includes('admin')) {
+    // SECURITY FIX: Use whitelist instead of string matching
+    if (email && isAdminEmail(email)) {
       setUserRole('admin');
       return;
     }
@@ -540,11 +557,11 @@ const AppProvider = ({ children, session }: { children?: React.ReactNode, sessio
   };
 
 
-  useEffect(() => { localStorage.setItem('pramar_professionals', JSON.stringify(professionals)); }, [professionals]);
-  useEffect(() => { localStorage.setItem('pramar_patients', JSON.stringify(patients)); }, [patients]);
-  useEffect(() => { localStorage.setItem('pramar_appointments', JSON.stringify(appointments)); }, [appointments]);
-  useEffect(() => { localStorage.setItem('pramar_records', JSON.stringify(records)); }, [records]);
-  useEffect(() => { localStorage.setItem('pramar_consultations', JSON.stringify(consultations)); }, [consultations]);
+  useEffect(() => { safeLocalStorage.setItem('pramar_professionals', professionals); }, [professionals]);
+  useEffect(() => { safeLocalStorage.setItem('pramar_patients', patients); }, [patients]);
+  useEffect(() => { safeLocalStorage.setItem('pramar_appointments', appointments); }, [appointments]);
+  useEffect(() => { safeLocalStorage.setItem('pramar_records', records); }, [records]);
+  useEffect(() => { safeLocalStorage.setItem('pramar_consultations', consultations); }, [consultations]);
 
   const addProfessional = async (p: Professional) => {
     if (!supabase) return;
@@ -3420,4 +3437,9 @@ const App = () => {
 };
 
 const root = createRoot(document.getElementById('root')!);
-root.render(<App />);
+root.render(
+  <ErrorBoundary>
+    <App />
+    <ToastContainer />
+  </ErrorBoundary>
+);
