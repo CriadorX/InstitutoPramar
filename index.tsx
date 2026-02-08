@@ -235,9 +235,47 @@ const analyzeConsultationWithAI = async (
 
 // --- SUPABASE CLIENT ---
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+let supabase: any = null;
+
+if (supabaseUrl && supabaseKey) {
+  supabase = createClient(supabaseUrl, supabaseKey);
+} else {
+  console.error("Supabase environment variables missing!");
+}
+
+const MissingConfig = () => (
+  <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+    <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full border border-red-100 text-center">
+      <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
+        <AlertTriangle size={32} />
+      </div>
+      <h2 className="text-2xl font-bold text-slate-800 mb-2">Configuração Pendente</h2>
+      <p className="text-slate-600 mb-6">
+        Não foi possível conectar ao banco de dados. As variáveis de ambiente do Supabase não foram encontradas.
+      </p>
+
+      <div className="bg-slate-50 rounded-xl p-4 text-left text-sm font-mono text-slate-700 mb-6 overflow-x-auto border border-slate-200">
+        <div className="flex gap-2 items-center mb-1">
+          <span className={supabaseUrl ? "text-emerald-500" : "text-red-500"}>●</span>
+          VITE_SUPABASE_URL
+        </div>
+        <div className="flex gap-2 items-center">
+          <span className={supabaseKey ? "text-emerald-500" : "text-red-500"}>●</span>
+          VITE_SUPABASE_ANON_KEY
+        </div>
+      </div>
+
+      <button
+        onClick={() => window.location.reload()}
+        className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-xl transition-colors"
+      >
+        Tentar Novamente
+      </button>
+    </div>
+  </div>
 );
 
 // --- CONTEXT ---
@@ -274,6 +312,7 @@ const AppProvider = ({ children }: { children?: React.ReactNode }) => {
   }, []);
 
   const fetchProfessionals = async () => {
+    if (!supabase) return;
     const { data, error } = await supabase.from('profiles').select('*');
     if (data) setProfessionals(data as any);
   };
@@ -286,6 +325,7 @@ const AppProvider = ({ children }: { children?: React.ReactNode }) => {
   useEffect(() => { localStorage.setItem('pramar_consultations', JSON.stringify(consultations)); }, [consultations]);
 
   const addProfessional = async (p: Professional) => {
+    if (!supabase) return;
     const { data, error } = await supabase.from('profiles').insert([p]).select();
     if (data) setProfessionals(prev => [...prev, data[0] as any]);
   };
@@ -301,6 +341,10 @@ const AppProvider = ({ children }: { children?: React.ReactNode }) => {
   };
 
   const toggleAIChat = () => setIsAIChatOpen(prev => !prev);
+
+  if (!supabase) {
+    return <MissingConfig />;
+  }
 
   return (
     <AppContext.Provider value={{
@@ -494,8 +538,8 @@ const AIChatWidget = () => {
         {messages.map((msg, idx) => (
           <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-sm ${msg.role === 'user'
-                ? 'bg-violet-600 text-white rounded-br-none'
-                : 'bg-white text-slate-700 border border-slate-200 rounded-bl-none'
+              ? 'bg-violet-600 text-white rounded-br-none'
+              : 'bg-white text-slate-700 border border-slate-200 rounded-bl-none'
               }`}>
               {msg.text}
             </div>
