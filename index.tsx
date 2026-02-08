@@ -2998,7 +2998,7 @@ const LoginScreen = ({ onLogin }: { onLogin: (session: any) => void }) => {
       });
       if (error) throw error;
     } catch (error: any) {
-      alert('Erro ao conectar com ' + provider + ': ' + error.message);
+      toast.error('Erro ao conectar com ' + provider + ': ' + error.message);
     } finally {
       setLoading(false);
     }
